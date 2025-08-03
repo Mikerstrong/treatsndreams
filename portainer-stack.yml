@@ -2,9 +2,8 @@ version: '3.8'
 
 services:
   treatsdreams:
-    image: treatsdreams:latest
     build: 
-      context: .
+      context: https://github.com/Mikerstrong/treatsndreams.git
       dockerfile: Dockerfile
     ports:
       - "8501:8501"
