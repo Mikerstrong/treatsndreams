@@ -438,7 +438,7 @@ with st.expander("Dream List"):
                 st.success("Purchased!")
             else:
                 points = st.session_state.dream_bank
-                percent = min(points / dream["cost"], 1.0) * 100
+                percent = min(max(points / dream["cost"], 0.0), 1.0) * 100
                 points_needed = max(dream["cost"] - points, 0)
                 st.progress(percent / 100, text=f"{percent:.1f}% complete")
                 st.write(f"Points needed: {points_needed}")
