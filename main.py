@@ -122,8 +122,8 @@ with st.expander("Current Activities"):
         with col1:
             st.write(f"- **{a['name']}**: {a['points']} points")
         with col2:
-            if st.button("✏️", key=f"edit_activity_{idx}", help="Edit Activity"):
-                st.session_state[f"edit_activity_{idx}"] = True
+            if st.button("✏️", key=f"edit_activity_btn_{idx}", help="Edit Activity"):
+                st.session_state[f"edit_activity_form_{idx}"] = True
         with col3:
             if st.button("🗑️", key=f"delete_activity_{idx}", help="Delete Activity"):
                 st.session_state.activities.pop(idx)
@@ -131,8 +131,8 @@ with st.expander("Current Activities"):
                 st.rerun()
         
         # Edit form for this activity
-        if st.session_state.get(f"edit_activity_{idx}", False):
-            with st.form(key=f"edit_activity_form_{idx}"):
+        if st.session_state.get(f"edit_activity_form_{idx}", False):
+            with st.form(key=f"edit_activity_form_submit_{idx}"):
                 st.write(f"**Editing: {a['name']}**")
                 edit_name = st.text_input("Activity Name", value=a['name'])
                 edit_points = st.number_input("Points", value=a['points'], min_value=1, step=1)
@@ -140,13 +140,13 @@ with st.expander("Current Activities"):
                 with col1:
                     if st.form_submit_button("Save Changes"):
                         st.session_state.activities[idx] = {"name": edit_name, "points": edit_points}
-                        st.session_state[f"edit_activity_{idx}"] = False
+                        st.session_state[f"edit_activity_form_{idx}"] = False
                         save_bank()
                         st.success("Activity updated!")
                         st.rerun()
                 with col2:
                     if st.form_submit_button("Cancel"):
-                        st.session_state[f"edit_activity_{idx}"] = False
+                        st.session_state[f"edit_activity_form_{idx}"] = False
                         st.rerun()
     import random
     activity_form_key = f"add_activity_{random.randint(0, 1_000_000)}" if st.session_state.get("reset_activity_form") else "add_activity"
@@ -204,8 +204,8 @@ with st.expander("Available Treats"):
                         save_bank()
                         st.success("Treat purchased! Points moved to Dream Bank.")
         with treat_cols[1]:
-            if st.button("✏️", key=f"edit_treat_{idx}", help="Edit Treat"):
-                st.session_state[f"edit_treat_{idx}"] = True
+            if st.button("✏️", key=f"edit_treat_btn_{idx}", help="Edit Treat"):
+                st.session_state[f"edit_treat_form_{idx}"] = True
         with treat_cols[2]:
             if st.button("🗑️", key=f"delete_treat_{idx}", help="Delete Treat"):
                 st.session_state.treats.pop(idx)
@@ -213,8 +213,8 @@ with st.expander("Available Treats"):
                 st.rerun()
         
         # Edit form for this treat
-        if st.session_state.get(f"edit_treat_{idx}", False):
-            with st.form(key=f"edit_treat_form_{idx}"):
+        if st.session_state.get(f"edit_treat_form_{idx}", False):
+            with st.form(key=f"edit_treat_form_submit_{idx}"):
                 st.write(f"**Editing: {treat['name']}**")
                 edit_name = st.text_input("Treat Name", value=treat['name'])
                 edit_cost = st.number_input("Treat Cost (points)", value=treat['cost'], min_value=1, step=1)
@@ -222,13 +222,13 @@ with st.expander("Available Treats"):
                 with col1:
                     if st.form_submit_button("Save Changes"):
                         st.session_state.treats[idx] = {"name": edit_name, "cost": edit_cost, "purchased_by": treat["purchased_by"]}
-                        st.session_state[f"edit_treat_{idx}"] = False
+                        st.session_state[f"edit_treat_form_{idx}"] = False
                         save_bank()
                         st.success("Treat updated!")
                         st.rerun()
                 with col2:
                     if st.form_submit_button("Cancel"):
-                        st.session_state[f"edit_treat_{idx}"] = False
+                        st.session_state[f"edit_treat_form_{idx}"] = False
                         st.rerun()
 
     with st.form(key="add_treat"):
@@ -276,8 +276,8 @@ with st.expander("Dream List"):
                         save_bank()
                         st.success("Dream purchased!")
         with dream_cols[1]:
-            if st.button("✏️", key=f"edit_dream_{idx}", help="Edit Dream"):
-                st.session_state[f"edit_dream_{idx}"] = True
+            if st.button("✏️", key=f"edit_dream_btn_{idx}", help="Edit Dream"):
+                st.session_state[f"edit_dream_form_{idx}"] = True
         with dream_cols[2]:
             if st.button("🗑️", key=f"delete_dream_{idx}", help="Delete Dream"):
                 st.session_state.dreams.pop(idx)
@@ -285,8 +285,8 @@ with st.expander("Dream List"):
                 st.rerun()
         
         # Edit form for this dream
-        if st.session_state.get(f"edit_dream_{idx}", False):
-            with st.form(key=f"edit_dream_form_{idx}"):
+        if st.session_state.get(f"edit_dream_form_{idx}", False):
+            with st.form(key=f"edit_dream_form_submit_{idx}"):
                 st.write(f"**Editing: {dream['name']}**")
                 edit_name = st.text_input("Dream Name", value=dream['name'])
                 edit_cost = st.number_input("Dream Cost (points)", value=dream['cost'], min_value=1, step=1)
@@ -294,13 +294,13 @@ with st.expander("Dream List"):
                 with col1:
                     if st.form_submit_button("Save Changes"):
                         st.session_state.dreams[idx] = {"name": edit_name, "cost": edit_cost, "purchased_by": dream["purchased_by"]}
-                        st.session_state[f"edit_dream_{idx}"] = False
+                        st.session_state[f"edit_dream_form_{idx}"] = False
                         save_bank()
                         st.success("Dream updated!")
                         st.rerun()
                 with col2:
                     if st.form_submit_button("Cancel"):
-                        st.session_state[f"edit_dream_{idx}"] = False
+                        st.session_state[f"edit_dream_form_{idx}"] = False
                         st.rerun()
 
     with st.form(key="add_dream"):
