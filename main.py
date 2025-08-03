@@ -135,12 +135,42 @@ if st.session_state.users:
     total_points = user_bank["activity_points"]
     user_level, points_in_level, points_needed = calculate_level(total_points)
 
+    # Dynamic icon and title based on level (every 5 levels)
+    def get_level_title_icon(level):
+        # List of (icon, title) tuples, gender-neutral, gaming-themed, scalable
+        titles = [
+            ("🌱", "Beginner"),
+            ("🦾", "Apprentice"),
+            ("⚡", "Adventurer"),
+            ("🛡️", "Challenger"),
+            ("🦉", "Strategist"),
+            ("🐉", "Elite"),
+            ("👑", "Champion"),
+            ("🚀", "Legend"),
+            ("🌌", "Mythic"),
+            ("🏆", "Ascendant"),
+            ("🧬", "Transcendent"),
+            ("💫", "Immortal"),
+            ("🪐", "Celestial"),
+            ("🔥", "Paragon"),
+            ("🎮", "Grandmaster"),
+            ("🦸", "Vanguard"),
+            ("🧙", "Archmage"),
+            ("🦾", "Overlord"),
+            ("🌟", "Virtuoso"),
+            ("👾", "Ultimate"),
+        ]
+        idx = min((level - 1) // 5, len(titles) - 1)
+        return titles[idx]
+
+    level_icon, level_title = get_level_title_icon(user_level)
+
     # Clamp points_in_level to [0, points_needed]
     points_in_level = max(0, min(points_in_level, points_needed))
     # Show level info at the top
     level_col1, level_col2 = st.columns([3, 1])
     with level_col1:
-        st.header(f"Hello, {user}!")
+        st.header(f"{level_icon} {level_title} {user}")
         st.subheader(f"Level {user_level} - {points_in_level}/{points_needed} points to next level")
         # Progress bar for level
         level_progress = points_in_level / points_needed if points_needed > 0 else 0
