@@ -22,10 +22,10 @@ COPY . .
 RUN mkdir -p /app/data
 
 # Expose Streamlit port
-EXPOSE 8501
+EXPOSE 8547
 
 # Health check
-HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
+HEALTHCHECK CMD curl --fail http://localhost:8547/_stcore/health
 
 # Run Streamlit
-CMD ["streamlit", "run", "main.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "main.py", "--server.port=8547", "--server.address=0.0.0.0"]
