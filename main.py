@@ -273,8 +273,19 @@ with st.expander("Current Activities"):
 
 with st.form(key="complete_activity"):
     st.write("Mark an activity as complete:")
+
+    # Show activity names with points in dropdown
+    activity_options = [f"{a['name']} (+{a['points']} pts)" for a in st.session_state.activities]
+    activity_choice_display = st.selectbox("Activity", activity_options)
+    # Map back to activity name for logic
     activity_names = [a["name"] for a in st.session_state.activities]
-    activity_choice = st.selectbox("Activity", activity_names)
+    # Extract the selected activity name
+    if activity_choice_display:
+        # Find the index of the selected option
+        selected_idx = activity_options.index(activity_choice_display)
+        activity_choice = activity_names[selected_idx]
+    else:
+        activity_choice = None
 
     if st.form_submit_button("Complete Activity") and user:
         points = next(a["points"] for a in st.session_state.activities if a["name"] == activity_choice)
