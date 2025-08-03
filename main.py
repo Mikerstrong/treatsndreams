@@ -245,9 +245,9 @@ with st.form(key="complete_activity"):
     st.write("Mark an activity as complete:")
     activity_names = [a["name"] for a in st.session_state.activities]
     activity_choice = st.selectbox("Activity", activity_names)
+
     if st.form_submit_button("Complete Activity") and user:
         points = next(a["points"] for a in st.session_state.activities if a["name"] == activity_choice)
-        
 
         # Get current level and points needed for next level
         current_level, _, current_points_needed = calculate_level(st.session_state.user_banks[user]["activity_points"])
@@ -290,10 +290,8 @@ with st.form(key="complete_activity"):
         save_bank()
         save_activity_logs()
 
-        if bonus_points > 0:
-            st.success(f"{activity_choice} completed! +{points} points. 🎉 LEVEL UP to Level {new_level}! +{bonus_points} bonus points!")
-        else:
-            st.success(f"{activity_choice} completed! +{points} points.")
+        # Immediately rerun to update points and level display
+        st.rerun()
 
 if user:
     # Activity History dropdown
