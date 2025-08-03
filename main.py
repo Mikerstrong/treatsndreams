@@ -366,4 +366,84 @@ if user and st.session_state.dreams:
             st.info("All dreams have been purchased!")
 
 st.markdown("---")
+
+# Admin Section
+with st.expander("⚙️ Admin Controls"):
+    st.warning("**Warning**: Admin actions affect all users and data.")
+    
+    st.markdown("### Reset Dream Bank")
+    admin_col1, admin_col2 = st.columns([3, 1])
+    
+    with admin_col1:
+        st.markdown("Resets the shared dream bank to 0 points.")
+    
+    with admin_col2:
+        if st.button("Reset Dream Bank"):
+            # Show confirmation dialog using session state
+            st.session_state["show_reset_confirmation"] = True
+    
+    # Dream Bank Confirmation dialog
+    if st.session_state.get("show_reset_confirmation", False):
+        st.error("⚠️ Are you sure you want to reset the Dream Bank to 0 points? This cannot be undone.")
+        
+        confirm_col1, confirm_col2 = st.columns([1, 1])
+        with confirm_col1:
+            if st.button("Yes, Reset Dream Bank"):
+                # Reset dream bank
+                st.session_state.dream_bank = 0
+                save_bank()
+                st.session_state["show_reset_confirmation"] = False
+                st.success("Dream Bank has been reset to 0 points!")
+                st.rerun()
+        
+        with confirm_col2:
+            if st.button("Cancel"):
+                st.session_state["show_reset_confirmation"] = False
+                st.rerun()
+    
+    st.markdown("---")
+    st.markdown("### Reset User Activity Points")
+    
+    if st.session_state.users:
+        user_to_reset = st.selectbox("Select User", 
+                                    options=st.session_state.users,
+                                    key="admin_user_select",
+                                    format_func=lambda x: f"{x} - {st.session_state.user_banks.get(x, {}).get('activity_points', 0)} points")
+        
+        reset_user_col1, reset_user_col2 = st.columns([3, 1])
+        
+        with reset_user_col1:
+            st.markdown(f"Reset activity points for **{user_to_reset}** to 0.")
+        
+        with reset_user_col2:
+            if st.button("Reset User Points"):
+                # Show confirmation dialog
+                st.session_state["show_user_reset_confirmation"] = True
+                st.session_state["user_to_reset"] = user_to_reset
+        
+        # User Points Confirmation dialog
+        if st.session_state.get("show_user_reset_confirmation", False):
+            user_to_reset = st.session_state.get("user_to_reset")
+            current_points = st.session_state.user_banks.get(user_to_reset, {}).get('activity_points', 0)
+            
+            st.error(f"⚠️ Are you sure you want to reset **{user_to_reset}**'s activity points from {current_points} to 0? This cannot be undone.")
+            
+            user_confirm_col1, user_confirm_col2 = st.columns([1, 1])
+            with user_confirm_col1:
+                if st.button("Yes, Reset User Points"):
+                    # Reset user points
+                    if user_to_reset in st.session_state.user_banks:
+                        st.session_state.user_banks[user_to_reset]["activity_points"] = 0
+                        save_bank()
+                        st.session_state["show_user_reset_confirmation"] = False
+                        st.success(f"{user_to_reset}'s activity points have been reset to 0!")
+                        st.rerun()
+            
+            with user_confirm_col2:
+                if st.button("Cancel Reset"):
+                    st.session_state["show_user_reset_confirmation"] = False
+                    st.rerun()
+    else:
+        st.info("No users available to reset.")
+
 st.caption("Made with ❤️ using Streamlit. Data is session-based and resets on reload.")
