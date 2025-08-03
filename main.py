@@ -248,19 +248,22 @@ with st.form(key="complete_activity"):
     if st.form_submit_button("Complete Activity") and user:
         points = next(a["points"] for a in st.session_state.activities if a["name"] == activity_choice)
         
-        # Get current level
-        current_level, _, _ = calculate_level(st.session_state.user_banks[user]["activity_points"])
+
+        # Get current level and points needed for next level
+        current_level, _, current_points_needed = calculate_level(st.session_state.user_banks[user]["activity_points"])
 
         # Update user points
         st.session_state.user_banks[user]["activity_points"] += points
 
         # Check for level up
-        new_level, _, _ = calculate_level(st.session_state.user_banks[user]["activity_points"])
+        new_level, _, new_points_needed = calculate_level(st.session_state.user_banks[user]["activity_points"])
         bonus_points = 0
 
         if new_level > current_level:
-            # Award bonus points for leveling up (5% of current level, min 1)
-            bonus_points = max(1, int(new_level * 0.05))
+            import math
+            # Award bonus points for leveling up (10% of points needed for next level, min 1)
+            next_level_points = new_points_needed if new_points_needed > 0 else 1
+            bonus_points = max(1, math.ceil(next_level_points * 0.10))
             st.session_state.user_banks[user]["activity_points"] += bonus_points
 
         # Add to activity log with timestamp
