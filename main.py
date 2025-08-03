@@ -30,7 +30,6 @@ def save_bank():
     with open(BANK_FILE, "w") as f:
         json.dump({
             "activities": st.session_state.activities,
-            "treats": st.session_state.treats,
             "dreams": st.session_state.dreams,
             "user_banks": st.session_state.user_banks,
             "dream_bank": st.session_state.dream_bank
@@ -46,10 +45,6 @@ if "activities" not in st.session_state:
         {"name": "Run 5km", "points": 10},
         {"name": "Yoga 30min", "points": 5}
     ])
-if "treats" not in st.session_state:
-    st.session_state.treats = bank_data.get("treats", [
-        {"name": "Ice Cream", "cost": 15, "purchased_by": []}
-    ])
 if "dreams" not in st.session_state:
     st.session_state.dreams = bank_data.get("dreams", [
         {"name": "Weekend Trip", "cost": 100, "purchased_by": []}
@@ -58,7 +53,14 @@ if "user_banks" not in st.session_state:
     if "user_banks" in bank_data:
         st.session_state.user_banks = bank_data["user_banks"]
     else:
-        st.session_state.user_banks = {user: {"activity_points": 0} for user in st.session_state.users}
+        # Initialize user banks with activity points and empty treats list for each user
+        st.session_state.user_banks = {
+            user: {
+                "activity_points": 0, 
+                "treats": [{"name": "Ice Cream", "cost": 15, "purchased": False}]
+            } 
+            for user in st.session_state.users
+        }
 if "dream_bank" not in st.session_state:
     st.session_state.dream_bank = bank_data.get("dream_bank", 0)
 
@@ -67,22 +69,10 @@ st.title("🏋️ Workout Motivation App")
 
 st.subheader("Users")
 if st.session_state.users:
-    user_cols = st.columns([4,1])
-    with user_cols[0]:
-        user = st.selectbox("Select User", st.session_state.users, key="user_select")
-        st.session_state.selected_user = user
-        user_bank = st.session_state.user_banks.get(user, {"activity_points": 0})
-        st.header(f"Hello, {user}!")
-    with user_cols[1]:
-        if st.button("🗑️ Delete User", key="delete_user"):
-            if user:
-                st.session_state.users.remove(user)
-                save_users(st.session_state.users)
-                st.session_state.user_banks.pop(user, None)
-                save_bank()
-                st.session_state.selected_user = st.session_state.users[0] if st.session_state.users else None
-                st.success(f"User '{user}' deleted!")
-                st.rerun()
+    user = st.selectbox("Select User", st.session_state.users, key="user_select")
+    st.session_state.selected_user = user
+    user_bank = st.session_state.user_banks.get(user, {"activity_points": 0})
+    st.header(f"Hello, {user}!")
 else:
     st.info("No users yet. Please add a user to get started.")
     user = None
@@ -100,8 +90,11 @@ if st.session_state.get("add_user_form_visible", False):
                 if new_user not in st.session_state.users:
                     st.session_state.users.append(new_user)
                     save_users(st.session_state.users)
-                    # Add to user_banks
-                    st.session_state.user_banks[new_user] = {"activity_points": 0}
+                    # Add to user_banks with default treats
+                    st.session_state.user_banks[new_user] = {
+                        "activity_points": 0,
+                        "treats": [{"name": "Ice Cream", "cost": 15, "purchased": False}]
+                    }
                     st.session_state["add_user_form_visible"] = False
                     st.success(f"User '{new_user}' added!")
                     st.rerun()
@@ -180,72 +173,82 @@ if user:
 # ---- Treats ----
 st.header("🎁 Treats")
 
-with st.expander("Available Treats"):
-    if not st.session_state.treats:
-        st.write("_No treats yet!_")
-    for idx, treat in enumerate(st.session_state.treats):
-        treat_cols = st.columns([4,1,1])
-        with treat_cols[0]:
-            purchased = user in treat["purchased_by"]
-            st.write(f"**{treat['name']}** - Cost: {treat['cost']} pts")
-            if purchased:
-                st.success("Purchased!")
-            else:
-                points = user_bank["activity_points"] if user else 0
-                percent = min(points / treat["cost"], 1.0) * 100
-                points_needed = max(treat["cost"] - points, 0)
-                st.progress(percent / 100, text=f"{percent:.1f}% complete")
-                st.write(f"Points needed: {points_needed}")
-        with treat_cols[1]:
-            if st.button("✏️", key=f"edit_treat_btn_{idx}", help="Edit Treat"):
-                st.session_state[f"edit_treat_form_{idx}"] = True
-        with treat_cols[2]:
-            if st.button("🗑️", key=f"delete_treat_{idx}", help="Delete Treat"):
-                st.session_state.treats.pop(idx)
+# Only proceed if a user is selected
+if user:
+    user_treats = user_bank.get("treats", [])
+    
+    with st.expander("Your Treats"):
+        if not user_treats:
+            st.write("_No treats yet!_")
+            
+        for idx, treat in enumerate(user_treats):
+            treat_cols = st.columns([4,1,1])
+            with treat_cols[0]:
+                purchased = treat.get("purchased", False)
+                st.write(f"**{treat['name']}** - Cost: {treat['cost']} pts")
+                if purchased:
+                    st.success("Purchased!")
+                else:
+                    points = user_bank["activity_points"]
+                    percent = min(points / treat["cost"], 1.0) * 100
+                    points_needed = max(treat["cost"] - points, 0)
+                    st.progress(percent / 100, text=f"{percent:.1f}% complete")
+                    st.write(f"Points needed: {points_needed}")
+            with treat_cols[1]:
+                if st.button("✏️", key=f"edit_treat_btn_{idx}", help="Edit Treat"):
+                    st.session_state[f"edit_treat_form_{idx}"] = True
+            with treat_cols[2]:
+                if st.button("🗑️", key=f"delete_treat_{idx}", help="Delete Treat"):
+                    user_bank["treats"].pop(idx)
+                    save_bank()
+                    st.rerun()
+            
+            # Edit form for this treat
+            if st.session_state.get(f"edit_treat_form_{idx}", False):
+                with st.form(key=f"edit_treat_form_submit_{idx}"):
+                    st.write(f"**Editing: {treat['name']}**")
+                    edit_name = st.text_input("Treat Name", value=treat['name'])
+                    edit_cost = st.number_input("Treat Cost (points)", value=treat['cost'], min_value=1, step=1)
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.form_submit_button("Save Changes"):
+                            user_bank["treats"][idx] = {
+                                "name": edit_name, 
+                                "cost": edit_cost, 
+                                "purchased": treat.get("purchased", False)
+                            }
+                            save_bank()
+                            st.success("Treat updated!")
+                            st.rerun()
+                    with col2:
+                        if st.form_submit_button("Cancel"):
+                            st.session_state[f"edit_treat_form_{idx}"] = False
+                            st.rerun()
+
+        with st.form(key="add_treat"):
+            treat_name = st.text_input("New Treat Name")
+            treat_cost = st.number_input("Treat Cost (points)", min_value=1, step=1)
+            if st.form_submit_button("Add Treat") and treat_name:
+                if "treats" not in user_bank:
+                    user_bank["treats"] = []
+                    
+                user_bank["treats"].append(
+                    {"name": treat_name, "cost": treat_cost, "purchased": False}
+                )
                 save_bank()
+                st.success("Treat added!")
                 st.rerun()
-        
-        # Edit form for this treat
-        if st.session_state.get(f"edit_treat_form_{idx}", False):
-            with st.form(key=f"edit_treat_form_submit_{idx}"):
-                st.write(f"**Editing: {treat['name']}**")
-                edit_name = st.text_input("Treat Name", value=treat['name'])
-                edit_cost = st.number_input("Treat Cost (points)", value=treat['cost'], min_value=1, step=1)
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.form_submit_button("Save Changes"):
-                        st.session_state.treats[idx] = {"name": edit_name, "cost": edit_cost, "purchased_by": treat["purchased_by"]}
-                        st.session_state[f"edit_treat_form_{idx}"] = False
-                        save_bank()
-                        st.success("Treat updated!")
-                        st.rerun()
-                with col2:
-                    if st.form_submit_button("Cancel"):
-                        st.session_state[f"edit_treat_form_{idx}"] = False
-                        st.rerun()
 
-    with st.form(key="add_treat"):
-        treat_name = st.text_input("New Treat Name")
-        treat_cost = st.number_input("Treat Cost (points)", min_value=1, step=1)
-        if st.form_submit_button("Add Treat") and treat_name:
-            st.session_state.treats.append(
-                {"name": treat_name, "cost": treat_cost, "purchased_by": []}
-            )
-            save_bank()
-            st.success("Treat added!")
-            st.rerun()
+    # Treats purchased percentage
+    if user_treats:
+        purchased = sum(1 for t in user_treats if t.get("purchased", False))
+        total = len(user_treats)
+        percent = (purchased / total) * 100 if total > 0 else 0
+        st.info(f"Treats Purchased: {purchased} / {total} ({percent:.1f}%)")
 
-# Treats purchased percentage
-if st.session_state.treats:
-    purchased = sum(user in t["purchased_by"] for t in st.session_state.treats)
-    total = len(st.session_state.treats)
-    percent = (purchased / total) * 100
-    st.info(f"Treats Purchased: {purchased} / {total} ({percent:.1f}%)")
-
-# Purchase treats with dropdown
-if user and st.session_state.treats:
+    # Purchase treats with dropdown
     st.subheader("Purchase Treats")
-    available_treats = [t for t in st.session_state.treats if user not in t["purchased_by"]]
+    available_treats = [t for t in user_treats if not t.get("purchased", False)]
     affordable_treats = [t for t in available_treats if user_bank["activity_points"] >= t["cost"]]
     
     if affordable_treats:
@@ -256,20 +259,23 @@ if user and st.session_state.treats:
             if st.form_submit_button("Purchase Treat"):
                 # Find the selected treat
                 treat_name = selected_treat.split(" - ")[0]
-                treat = next(t for t in st.session_state.treats if t["name"] == treat_name)
+                treat_idx = next((i for i, t in enumerate(user_treats) if t["name"] == treat_name), None)
                 
-                # Purchase the treat
-                treat["purchased_by"].append(user)
-                st.session_state.user_banks[user]["activity_points"] -= treat["cost"]
-                st.session_state.dream_bank += treat["cost"]
-                save_bank()
-                st.success(f"Treat '{treat['name']}' purchased! Points moved to Dream Bank.")
-                st.rerun()
+                if treat_idx is not None:
+                    # Purchase the treat
+                    user_bank["treats"][treat_idx]["purchased"] = True
+                    user_bank["activity_points"] -= user_bank["treats"][treat_idx]["cost"]
+                    st.session_state.dream_bank += user_bank["treats"][treat_idx]["cost"]
+                    save_bank()
+                    st.success(f"Treat '{treat_name}' purchased! Points moved to Dream Bank.")
+                    st.rerun()
     else:
         if available_treats:
             st.info("You don't have enough points to purchase any available treats.")
         else:
             st.info("You have purchased all available treats!")
+else:
+    st.info("Please select a user to manage treats.")
 
 # ---- Dream Points ----
 st.header("🌟 Dreams")
@@ -402,12 +408,58 @@ with st.expander("⚙️ Admin Controls"):
                 st.rerun()
     
     st.markdown("---")
+    st.markdown("### User Management")
+
+    # Delete User
+    if st.session_state.users:
+        st.markdown("**Delete User**: Permanently remove a user account.")
+        delete_user_col1, delete_user_col2 = st.columns([3, 1])
+        
+        with delete_user_col1:
+            user_to_delete = st.selectbox(
+                "Select User to Delete",
+                options=st.session_state.users,
+                key="admin_delete_user"
+            )
+        
+        with delete_user_col2:
+            st.write(" ")  # Spacer for alignment
+            if st.button("Delete User"):
+                # Show confirmation dialog
+                st.session_state["show_delete_confirmation"] = True
+                st.session_state["user_to_delete"] = user_to_delete
+        
+        # Delete User Confirmation dialog
+        if st.session_state.get("show_delete_confirmation", False):
+            user_to_delete = st.session_state.get("user_to_delete")
+            
+            st.error(f"⚠️ Are you sure you want to delete user **{user_to_delete}**? All their data will be lost. This cannot be undone.")
+            
+            delete_confirm_col1, delete_confirm_col2 = st.columns([1, 1])
+            with delete_confirm_col1:
+                if st.button("Yes, Delete User"):
+                    if user_to_delete:
+                        st.session_state.users.remove(user_to_delete)
+                        save_users(st.session_state.users)
+                        st.session_state.user_banks.pop(user_to_delete, None)
+                        save_bank()
+                        st.session_state.selected_user = st.session_state.users[0] if st.session_state.users else None
+                        st.session_state["show_delete_confirmation"] = False
+                        st.success(f"User '{user_to_delete}' deleted!")
+                        st.rerun()
+            
+            with delete_confirm_col2:
+                if st.button("Cancel Delete"):
+                    st.session_state["show_delete_confirmation"] = False
+                    st.rerun()
+
+    st.markdown("---")
     st.markdown("### Reset User Activity Points")
     
     if st.session_state.users:
         user_to_reset = st.selectbox("Select User", 
                                     options=st.session_state.users,
-                                    key="admin_user_select",
+                                    key="admin_user_reset",
                                     format_func=lambda x: f"{x} - {st.session_state.user_banks.get(x, {}).get('activity_points', 0)} points")
         
         reset_user_col1, reset_user_col2 = st.columns([3, 1])
@@ -434,11 +486,15 @@ with st.expander("⚙️ Admin Controls"):
                     # Reset user points
                     if user_to_reset in st.session_state.user_banks:
                         st.session_state.user_banks[user_to_reset]["activity_points"] = 0
+                        # Reset purchased status on all treats
+                        if "treats" in st.session_state.user_banks[user_to_reset]:
+                            for treat in st.session_state.user_banks[user_to_reset]["treats"]:
+                                treat["purchased"] = False
                         save_bank()
                         st.session_state["show_user_reset_confirmation"] = False
-                        st.success(f"{user_to_reset}'s activity points have been reset to 0!")
+                        st.success(f"{user_to_reset}'s activity points have been reset to 0 and treats marked as unpurchased!")
                         st.rerun()
-            
+                        
             with user_confirm_col2:
                 if st.button("Cancel Reset"):
                     st.session_state["show_user_reset_confirmation"] = False
