@@ -196,13 +196,6 @@ with st.expander("Available Treats"):
                 points_needed = max(treat["cost"] - points, 0)
                 st.progress(percent / 100, text=f"{percent:.1f}% complete")
                 st.write(f"Points needed: {points_needed}")
-                if points >= treat["cost"]:
-                    if st.button(f"Buy {treat['name']}", key=f"buy_treat_{treat['name']}"):
-                        treat["purchased_by"].append(user)
-                        st.session_state.user_banks[user]["activity_points"] -= treat["cost"]
-                        st.session_state.dream_bank += treat["cost"]
-                        save_bank()
-                        st.success("Treat purchased! Points moved to Dream Bank.")
         with treat_cols[1]:
             if st.button("✏️", key=f"edit_treat_btn_{idx}", help="Edit Treat"):
                 st.session_state[f"edit_treat_form_{idx}"] = True
@@ -249,6 +242,35 @@ if st.session_state.treats:
     percent = (purchased / total) * 100
     st.info(f"Treats Purchased: {purchased} / {total} ({percent:.1f}%)")
 
+# Purchase treats with dropdown
+if user and st.session_state.treats:
+    st.subheader("Purchase Treats")
+    available_treats = [t for t in st.session_state.treats if user not in t["purchased_by"]]
+    affordable_treats = [t for t in available_treats if user_bank["activity_points"] >= t["cost"]]
+    
+    if affordable_treats:
+        with st.form(key="purchase_treat_form"):
+            treat_options = [f"{t['name']} - {t['cost']} points" for t in affordable_treats]
+            selected_treat = st.selectbox("Select a treat to purchase:", treat_options)
+            
+            if st.form_submit_button("Purchase Treat"):
+                # Find the selected treat
+                treat_name = selected_treat.split(" - ")[0]
+                treat = next(t for t in st.session_state.treats if t["name"] == treat_name)
+                
+                # Purchase the treat
+                treat["purchased_by"].append(user)
+                st.session_state.user_banks[user]["activity_points"] -= treat["cost"]
+                st.session_state.dream_bank += treat["cost"]
+                save_bank()
+                st.success(f"Treat '{treat['name']}' purchased! Points moved to Dream Bank.")
+                st.rerun()
+    else:
+        if available_treats:
+            st.info("You don't have enough points to purchase any available treats.")
+        else:
+            st.info("You have purchased all available treats!")
+
 # ---- Dream Points ----
 st.header("🌟 Dreams")
 st.markdown(f"**Combined Dream Bank:** {st.session_state.dream_bank} points")
@@ -269,12 +291,6 @@ with st.expander("Dream List"):
                 points_needed = max(dream["cost"] - points, 0)
                 st.progress(percent / 100, text=f"{percent:.1f}% complete")
                 st.write(f"Points needed: {points_needed}")
-                if points >= dream["cost"]:
-                    if st.button(f"Buy {dream['name']}", key=f"buy_dream_{dream['name']}"):
-                        dream["purchased_by"].append(user)
-                        st.session_state.dream_bank -= dream["cost"]
-                        save_bank()
-                        st.success("Dream purchased!")
         with dream_cols[1]:
             if st.button("✏️", key=f"edit_dream_btn_{idx}", help="Edit Dream"):
                 st.session_state[f"edit_dream_form_{idx}"] = True
@@ -320,6 +336,34 @@ if st.session_state.dreams:
     total = len(st.session_state.dreams)
     percent = (purchased / total) * 100
     st.info(f"Dreams Purchased: {purchased} / {total} ({percent:.1f}%)")
+
+# Purchase dreams with dropdown
+if user and st.session_state.dreams:
+    st.subheader("Purchase Dreams")
+    available_dreams = [d for d in st.session_state.dreams if user not in d["purchased_by"]]
+    affordable_dreams = [d for d in available_dreams if st.session_state.dream_bank >= d["cost"]]
+    
+    if affordable_dreams:
+        with st.form(key="purchase_dream_form"):
+            dream_options = [f"{d['name']} - {d['cost']} points" for d in affordable_dreams]
+            selected_dream = st.selectbox("Select a dream to purchase:", dream_options)
+            
+            if st.form_submit_button("Purchase Dream"):
+                # Find the selected dream
+                dream_name = selected_dream.split(" - ")[0]
+                dream = next(d for d in st.session_state.dreams if d["name"] == dream_name)
+                
+                # Purchase the dream
+                dream["purchased_by"].append(user)
+                st.session_state.dream_bank -= dream["cost"]
+                save_bank()
+                st.success(f"Dream '{dream['name']}' purchased!")
+                st.rerun()
+    else:
+        if available_dreams:
+            st.info("Not enough points in the Dream Bank to purchase any available dreams.")
+        else:
+            st.info("All dreams have been purchased!")
 
 st.markdown("---")
 st.caption("Made with ❤️ using Streamlit. Data is session-based and resets on reload.")
