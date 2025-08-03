@@ -147,8 +147,11 @@ if st.session_state.users:
         level_progress = max(0.0, min(level_progress, 1.0))
         st.progress(level_progress, text=f"{int(level_progress * 100)}% to Level {user_level + 1}")
 
-        # Show rewards for leveling up
-        st.info(f"🏆 Level rewards: +{user_level * 5} bonus points at each new level!")
+        # Show rewards for leveling up (10% of points needed for next level, min 1)
+        import math
+        next_level_points = points_needed if points_needed > 0 else 1
+        level_bonus = max(1, math.ceil(next_level_points * 0.10))
+        st.info(f"🏆 Level rewards: +{level_bonus} bonus points at each new level!")
     with level_col2:
         st.metric("Total Points", total_points)
 else:
