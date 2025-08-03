@@ -160,7 +160,7 @@ if st.session_state.users:
             ("🌟", "Virtuoso"),
             ("👾", "Ultimate"),
         ]
-        idx = min((level - 1) // 5, len(titles) - 1)
+        idx = min(level // 5, len(titles) - 1)
         return titles[idx]
 
     level_icon, level_title = get_level_title_icon(user_level)
