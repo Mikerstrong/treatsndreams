@@ -349,7 +349,7 @@ if user:
                     st.success("Purchased!")
                 else:
                     points = user_bank["activity_points"]
-                    percent = min(points / treat["cost"], 1.0) * 100
+                    percent = min(max(points / treat["cost"], 0.0), 1.0) * 100
                     points_needed = max(treat["cost"] - points, 0)
                     st.progress(percent / 100, text=f"{percent:.1f}% complete")
                     st.write(f"Points needed: {points_needed}")
