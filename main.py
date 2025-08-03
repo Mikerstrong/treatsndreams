@@ -244,32 +244,32 @@ with st.form(key="complete_activity"):
         
         # Get current level
         current_level, _, _ = calculate_level(st.session_state.user_banks[user]["activity_points"])
-        
+
         # Update user points
         st.session_state.user_banks[user]["activity_points"] += points
-        
+
         # Check for level up
         new_level, _, _ = calculate_level(st.session_state.user_banks[user]["activity_points"])
         bonus_points = 0
-        
+
         if new_level > current_level:
-            # Award bonus points for leveling up
-            bonus_points = new_level * 5
+            # Award bonus points for leveling up (5% of current level, min 1)
+            bonus_points = max(1, int(new_level * 0.05))
             st.session_state.user_banks[user]["activity_points"] += bonus_points
-        
+
         # Add to activity log with timestamp
         from datetime import datetime
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
+
         if user not in st.session_state.activity_logs:
             st.session_state.activity_logs[user] = []
-            
+
         st.session_state.activity_logs[user].append({
             "timestamp": timestamp,
             "activity": activity_choice,
             "points": points
         })
-        
+
         # If there was a level up, add a bonus entry
         if bonus_points > 0:
             st.session_state.activity_logs[user].append({
@@ -277,10 +277,10 @@ with st.form(key="complete_activity"):
                 "activity": f"LEVEL UP BONUS (Level {new_level})",
                 "points": bonus_points
             })
-        
+
         save_bank()
         save_activity_logs()
-        
+
         if bonus_points > 0:
             st.success(f"{activity_choice} completed! +{points} points. 🎉 LEVEL UP to Level {new_level}! +{bonus_points} bonus points!")
         else:
@@ -618,11 +618,15 @@ with st.expander("⚙️ Admin Controls"):
                         if "treats" in st.session_state.user_banks[user_to_reset]:
                             for treat in st.session_state.user_banks[user_to_reset]["treats"]:
                                 treat["purchased"] = False
+                        # Clear activity log for the user
+                        if user_to_reset in st.session_state.activity_logs:
+                            st.session_state.activity_logs[user_to_reset] = []
+                            save_activity_logs()
                         save_bank()
                         st.session_state["show_user_reset_confirmation"] = False
-                        st.success(f"{user_to_reset}'s activity points have been reset to 0 and treats marked as unpurchased!")
+                        st.success(f"{user_to_reset}'s activity points and activity log have been reset to 0 and treats marked as unpurchased!")
                         st.rerun()
-                        
+
             with user_confirm_col2:
                 if st.button("Cancel Reset"):
                     st.session_state["show_user_reset_confirmation"] = False
