@@ -130,11 +130,13 @@ if st.session_state.users:
     user = st.selectbox("Select User", st.session_state.users, key="user_select")
     st.session_state.selected_user = user
     user_bank = st.session_state.user_banks.get(user, {"activity_points": 0})
-    
+
     # Calculate user level
     total_points = user_bank["activity_points"]
     user_level, points_in_level, points_needed = calculate_level(total_points)
-    
+
+    # Clamp points_in_level to [0, points_needed]
+    points_in_level = max(0, min(points_in_level, points_needed))
     # Show level info at the top
     level_col1, level_col2 = st.columns([3, 1])
     with level_col1:
@@ -142,8 +144,9 @@ if st.session_state.users:
         st.subheader(f"Level {user_level} - {points_in_level}/{points_needed} points to next level")
         # Progress bar for level
         level_progress = points_in_level / points_needed if points_needed > 0 else 0
+        level_progress = max(0.0, min(level_progress, 1.0))
         st.progress(level_progress, text=f"{int(level_progress * 100)}% to Level {user_level + 1}")
-        
+
         # Show rewards for leveling up
         st.info(f"🏆 Level rewards: +{user_level * 5} bonus points at each new level!")
     with level_col2:
