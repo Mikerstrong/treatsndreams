@@ -1,0 +1,38 @@
+# Docker ignore patterns
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# VS Code
+.vscode/
+
+# Environment files
+.env
+.venv
+env/
+venv/
+
+# Local data (will use volumes instead)
+*.json
+data/
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
