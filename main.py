@@ -38,8 +38,14 @@ st.subheader("Activities")
 st.write("Complete activities to earn activity points.")
 
 with st.expander("Current Activities"):
-    for a in st.session_state.activities:
-        st.write(f"- **{a['name']}**: {a['points']} points")
+    for idx, a in enumerate(st.session_state.activities):
+        col1, col2 = st.columns([4,1])
+        with col1:
+            st.write(f"- **{a['name']}**: {a['points']} points")
+        with col2:
+            if st.button("🗑️", key=f"delete_activity_{idx}"):
+                st.session_state.activities.pop(idx)
+                st.experimental_rerun()
     with st.form(key="add_activity"):
         new_activity = st.text_input("New Activity Name")
         new_points = st.number_input("Points", min_value=1, step=1)
