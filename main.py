@@ -151,7 +151,7 @@ if st.session_state.users:
         import math
         next_level_points = points_needed if points_needed > 0 else 1
         level_bonus = max(1, math.ceil(next_level_points * 0.10))
-        st.info(f"🏆 Level rewards: +{level_bonus} bonus points at each new level!")
+        st.info(f"🏆 Level rewards: +{level_bonus} bonus points at next level")
     with level_col2:
         st.metric("Total Points", total_points)
 else:
