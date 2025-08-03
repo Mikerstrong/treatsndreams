@@ -9,6 +9,7 @@ DATA_DIR = os.getenv("DATA_DIR", "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 BANK_FILE = os.path.join(DATA_DIR, "bank.json")
+ACTIVITY_FILE = os.path.join(DATA_DIR, "activity.json")
 
 def load_users():
     if os.path.exists(USERS_FILE):
@@ -26,6 +27,16 @@ def load_bank():
             return json.load(f)
     return {}
 
+def load_activity_logs():
+    if os.path.exists(ACTIVITY_FILE):
+        with open(ACTIVITY_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_activity_logs():
+    with open(ACTIVITY_FILE, "w") as f:
+        json.dump(st.session_state.activity_logs, f)
+
 def save_bank():
     with open(BANK_FILE, "w") as f:
         json.dump({
@@ -35,11 +46,55 @@ def save_bank():
             "dream_bank": st.session_state.dream_bank
         }, f)
 
- # ---- Session State Initialization ----
+ # ---- Level calculations ----
+def calculate_points_needed(level):
+    """
+    Calculate points needed to reach a specific level
+    """
+    if level <= 1:
+        return 0
+    
+    total_points = 5  # Points needed for level 2
+    
+    for l in range(3, level+1):
+        total_points += 5 + ((l-1) * 5)  # (5, 10, 15, 20, 25...)
+    
+    return total_points
+
+def calculate_level(total_points):
+    """
+    Calculate level based on points with increasing difficulty
+    Level 1: 0-5 points
+    Level 2: 6-15 points (+10)
+    Level 3: 16-30 points (+15)
+    Level 4: 31-50 points (+20)
+    And so on with increasing difficulty
+    """
+    if total_points < 5:
+        return 1, total_points, 5  # Level 1, current points, need 5 for next level
+    
+    level = 1
+    points_needed = 5  # Points needed for first level
+    previous_threshold = 0
+    level_threshold = points_needed
+    
+    while total_points >= level_threshold:
+        level += 1
+        previous_threshold = level_threshold
+        points_needed = 5 + (level * 5)  # Increasing difficulty (5, 10, 15, 20, 25...)
+        level_threshold += points_needed
+    
+    # Calculate points in current level and points needed for next level
+    points_in_current_level = total_points - previous_threshold
+    
+    return level, points_in_current_level, points_needed
+
+# ---- Session State Initialization ----
 st.session_state.users = load_users()
 if "selected_user" not in st.session_state:
     st.session_state.selected_user = st.session_state.users[0] if st.session_state.users else None
 bank_data = load_bank()
+st.session_state.activity_logs = load_activity_logs()
 if "activities" not in st.session_state:
     st.session_state.activities = bank_data.get("activities", [
         {"name": "Run 5km", "points": 10},
@@ -61,6 +116,9 @@ if "user_banks" not in st.session_state:
             } 
             for user in st.session_state.users
         }
+
+if "activity_logs" not in st.session_state:
+    st.session_state.activity_logs = {user: [] for user in st.session_state.users}
 if "dream_bank" not in st.session_state:
     st.session_state.dream_bank = bank_data.get("dream_bank", 0)
 
@@ -72,7 +130,24 @@ if st.session_state.users:
     user = st.selectbox("Select User", st.session_state.users, key="user_select")
     st.session_state.selected_user = user
     user_bank = st.session_state.user_banks.get(user, {"activity_points": 0})
-    st.header(f"Hello, {user}!")
+    
+    # Calculate user level
+    total_points = user_bank["activity_points"]
+    user_level, points_in_level, points_needed = calculate_level(total_points)
+    
+    # Show level info at the top
+    level_col1, level_col2 = st.columns([3, 1])
+    with level_col1:
+        st.header(f"Hello, {user}!")
+        st.subheader(f"Level {user_level} - {points_in_level}/{points_needed} points to next level")
+        # Progress bar for level
+        level_progress = points_in_level / points_needed if points_needed > 0 else 0
+        st.progress(level_progress, text=f"{int(level_progress * 100)}% to Level {user_level + 1}")
+        
+        # Show rewards for leveling up
+        st.info(f"🏆 Level rewards: +{user_level * 5} bonus points at each new level!")
+    with level_col2:
+        st.metric("Total Points", total_points)
 else:
     st.info("No users yet. Please add a user to get started.")
     user = None
@@ -95,6 +170,9 @@ if st.session_state.get("add_user_form_visible", False):
                         "activity_points": 0,
                         "treats": [{"name": "Ice Cream", "cost": 15, "purchased": False}]
                     }
+                    # Initialize empty activity log for the new user
+                    st.session_state.activity_logs[new_user] = []
+                    save_activity_logs()
                     st.session_state["add_user_form_visible"] = False
                     st.success(f"User '{new_user}' added!")
                     st.rerun()
@@ -163,12 +241,90 @@ with st.form(key="complete_activity"):
     activity_choice = st.selectbox("Activity", activity_names)
     if st.form_submit_button("Complete Activity") and user:
         points = next(a["points"] for a in st.session_state.activities if a["name"] == activity_choice)
+        
+        # Get current level
+        current_level, _, _ = calculate_level(st.session_state.user_banks[user]["activity_points"])
+        
+        # Update user points
         st.session_state.user_banks[user]["activity_points"] += points
+        
+        # Check for level up
+        new_level, _, _ = calculate_level(st.session_state.user_banks[user]["activity_points"])
+        bonus_points = 0
+        
+        if new_level > current_level:
+            # Award bonus points for leveling up
+            bonus_points = new_level * 5
+            st.session_state.user_banks[user]["activity_points"] += bonus_points
+        
+        # Add to activity log with timestamp
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        if user not in st.session_state.activity_logs:
+            st.session_state.activity_logs[user] = []
+            
+        st.session_state.activity_logs[user].append({
+            "timestamp": timestamp,
+            "activity": activity_choice,
+            "points": points
+        })
+        
+        # If there was a level up, add a bonus entry
+        if bonus_points > 0:
+            st.session_state.activity_logs[user].append({
+                "timestamp": timestamp,
+                "activity": f"LEVEL UP BONUS (Level {new_level})",
+                "points": bonus_points
+            })
+        
         save_bank()
-        st.success(f"{activity_choice} completed! +{points} points.")
+        save_activity_logs()
+        
+        if bonus_points > 0:
+            st.success(f"{activity_choice} completed! +{points} points. 🎉 LEVEL UP to Level {new_level}! +{bonus_points} bonus points!")
+        else:
+            st.success(f"{activity_choice} completed! +{points} points.")
 
 if user:
-    st.markdown(f"**Activity Points Bank:** {user_bank['activity_points']} points")
+    # Activity History dropdown
+    with st.expander("📋 Activity History"):
+        if user in st.session_state.activity_logs and st.session_state.activity_logs[user]:
+            st.write("Your completed activities:")
+            
+            # Sort activity logs by timestamp (newest first)
+            sorted_logs = sorted(
+                st.session_state.activity_logs[user], 
+                key=lambda x: x['timestamp'], 
+                reverse=True
+            )
+            
+            # Display total points from activities
+            total_activity_points = sum(log['points'] for log in sorted_logs)
+            st.info(f"Total points earned: {total_activity_points}")
+            
+            # Show each activity with its details
+            for idx, activity_log in enumerate(sorted_logs):
+                col1, col2, col3 = st.columns([3, 1, 1])
+                
+                with col1:
+                    st.write(f"**{activity_log['activity']}** - {activity_log['points']} pts - {activity_log['timestamp']}")
+                
+                with col3:
+                    # Delete activity log button
+                    if st.button("🗑️", key=f"delete_activity_log_{idx}"):
+                        # Find the original index in the unsorted list
+                        original_idx = st.session_state.activity_logs[user].index(activity_log)
+                        # Remove points from user's total
+                        st.session_state.user_banks[user]["activity_points"] -= activity_log["points"]
+                        # Delete the activity from logs
+                        st.session_state.activity_logs[user].pop(original_idx)
+                        save_bank()
+                        save_activity_logs()
+                        st.success(f"Activity log deleted and {activity_log['points']} points removed.")
+                        st.rerun()
+        else:
+            st.info("No activity history yet. Complete activities to see them here.")
 
 # ---- Treats ----
 st.header("🎁 Treats")
