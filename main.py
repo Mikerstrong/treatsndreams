@@ -246,6 +246,7 @@ with st.expander("Dream List"):
             )
             save_bank()
             st.success("Dream added!")
+            st.rerun()
 
 # Dreams purchased percentage
 if st.session_state.dreams:

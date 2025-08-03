@@ -9,7 +9,7 @@ This is a Portainer stack configuration for deploying the TreatsDreams workout m
 3. **Name**: `treatsdreams`
 4. **Build Method**: Choose "Repository" 
 5. **Repository URL**: `https://github.com/Mikerstrong/treatsndreams`
-6. **Compose Path**: `docker-compose.yml`
+6. **Compose Path**: `portainer-stack.yml`
 7. **Deploy**
 
 ## Manual Deploy (Alternative)
@@ -19,14 +19,14 @@ If you prefer to deploy manually:
 1. **Go to Stacks** → **Add Stack**
 2. **Name**: `treatsdreams`
 3. **Build Method**: Choose "Web editor"
-4. **Copy and paste the docker-compose.yml content**
+4. **Copy and paste the portainer-stack.yml content**
 5. **Deploy**
 
 ## Stack Configuration
 
 The stack includes:
 - **Streamlit App**: Workout motivation tracker
-- **Port**: 8501 (accessible at http://your-server:8501)
+- **Port**: 8547 (accessible at http://your-server:8547)
 - **Persistent Storage**: Data is saved in Docker volumes
 - **Health Checks**: Automatic container health monitoring
 - **Auto Restart**: Container restarts automatically if it fails
@@ -37,7 +37,7 @@ You can customize these in Portainer's stack editor:
 
 ```yaml
 environment:
-  - STREAMLIT_SERVER_PORT=8501
+  - STREAMLIT_SERVER_PORT=8547
   - STREAMLIT_SERVER_ADDRESS=0.0.0.0
   - STREAMLIT_SERVER_HEADLESS=true
   - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
@@ -51,8 +51,8 @@ environment:
 ## Accessing the App
 
 After deployment, access your app at:
-- **Local**: http://localhost:8501
-- **Server**: http://your-server-ip:8501
+- **Local**: http://localhost:8547
+- **Server**: http://your-server-ip:8547
 
 ## Updating the App
 
@@ -66,4 +66,4 @@ To update:
 
 - **Check logs**: Go to Containers → treatsdreams-app → Logs
 - **Health status**: Check the container health indicator
-- **Port conflicts**: Ensure port 8501 is not used by other services
+- **Port conflicts**: Ensure port 8547 is not used by other services
