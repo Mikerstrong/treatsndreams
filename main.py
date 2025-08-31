@@ -3,6 +3,8 @@
 import streamlit as st
 import json
 import os
+from datetime import datetime, date, timedelta
+import random
 
 # ---- Data Storage ----
 DATA_DIR = os.getenv("DATA_DIR", "data")
@@ -10,6 +12,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 BANK_FILE = os.path.join(DATA_DIR, "bank.json")
 ACTIVITY_FILE = os.path.join(DATA_DIR, "activity.json")
+STEPS_FILE = os.path.join(DATA_DIR, "steps.json")
 
 def load_users():
     if os.path.exists(USERS_FILE):
@@ -43,8 +46,86 @@ def save_bank():
             "activities": st.session_state.activities,
             "dreams": st.session_state.dreams,
             "user_banks": st.session_state.user_banks,
-            "dream_bank": st.session_state.dream_bank
+            "dream_bank": st.session_state.dream_bank,
+            "step_goals": st.session_state.step_goals
         }, f)
+
+def load_steps():
+    if os.path.exists(STEPS_FILE):
+        with open(STEPS_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_steps():
+    with open(STEPS_FILE, "w") as f:
+        json.dump(st.session_state.step_data, f)
+
+def simulate_samsung_watch_sync(user):
+    """
+    Simulate Samsung watch step data sync.
+    In a real implementation, this would connect to Samsung Health API.
+    """
+    today = date.today().isoformat()
+    
+    # Initialize user step data if not exists
+    if user not in st.session_state.step_data:
+        st.session_state.step_data[user] = {}
+    
+    # Only generate steps for today if not already present
+    if today not in st.session_state.step_data[user]:
+        # Simulate realistic step counts (2000-15000 steps)
+        base_steps = random.randint(2000, 15000)
+        st.session_state.step_data[user][today] = {
+            "steps": base_steps,
+            "last_sync": datetime.now().isoformat(),
+            "points_awarded": False
+        }
+        save_steps()
+        return base_steps, True  # New data
+    else:
+        # Simulate small incremental updates throughout the day
+        current_steps = st.session_state.step_data[user][today]["steps"]
+        additional_steps = random.randint(0, 500)  # Small increments
+        st.session_state.step_data[user][today]["steps"] = current_steps + additional_steps
+        st.session_state.step_data[user][today]["last_sync"] = datetime.now().isoformat()
+        save_steps()
+        return current_steps + additional_steps, False  # Updated data
+
+def get_today_steps(user):
+    """Get today's step count for a user"""
+    today = date.today().isoformat()
+    if user in st.session_state.step_data and today in st.session_state.step_data[user]:
+        return st.session_state.step_data[user][today]["steps"]
+    return 0
+
+def award_step_points(user, steps, goal=10000):
+    """Award points based on step goals achieved"""
+    points_per_goal = 5  # Points awarded per step goal completion
+    
+    if steps >= goal:
+        today = date.today().isoformat()
+        if user in st.session_state.step_data and today in st.session_state.step_data[user]:
+            if not st.session_state.step_data[user][today].get("points_awarded", False):
+                # Award points for reaching daily step goal
+                st.session_state.user_banks[user]["activity_points"] += points_per_goal
+                st.session_state.step_data[user][today]["points_awarded"] = True
+                
+                # Add to activity log
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                if user not in st.session_state.activity_logs:
+                    st.session_state.activity_logs[user] = []
+                
+                st.session_state.activity_logs[user].append({
+                    "timestamp": timestamp,
+                    "activity": f"Daily Step Goal ({steps:,} steps)",
+                    "points": points_per_goal
+                })
+                
+                save_steps()
+                save_bank()
+                save_activity_logs()
+                return points_per_goal
+    return 0
 
  # ---- Level calculations ----
 def calculate_points_needed(level):
@@ -95,6 +176,10 @@ if "selected_user" not in st.session_state:
     st.session_state.selected_user = st.session_state.users[0] if st.session_state.users else None
 bank_data = load_bank()
 st.session_state.activity_logs = load_activity_logs()
+if "step_data" not in st.session_state:
+    st.session_state.step_data = load_steps()
+if "step_goals" not in st.session_state:
+    st.session_state.step_goals = bank_data.get("step_goals", {})
 if "activities" not in st.session_state:
     st.session_state.activities = bank_data.get("activities", [
         {"name": "Run 5km", "points": 10},
@@ -189,6 +274,81 @@ else:
     user = None
     user_bank = {"activity_points": 0}
 
+# ---- Samsung Watch Step Integration ----
+if user:
+    st.header("👟 Samsung Watch Steps")
+    
+    # Automatic step sync simulation
+    current_steps, is_new_data = simulate_samsung_watch_sync(user)
+    
+    # Get user's step goal (default 10,000)
+    user_step_goal = st.session_state.step_goals.get(user, 10000)
+    
+    # Display current steps and progress
+    col1, col2, col3 = st.columns([2, 2, 1])
+    
+    with col1:
+        st.metric("Today's Steps", f"{current_steps:,}")
+        if is_new_data:
+            st.success("✅ Synced with Samsung Watch")
+        else:
+            st.info("🔄 Auto-syncing...")
+    
+    with col2:
+        step_progress = min(current_steps / user_step_goal, 1.0) if user_step_goal > 0 else 0
+        st.metric("Daily Goal", f"{user_step_goal:,}")
+        st.progress(step_progress, text=f"{int(step_progress * 100)}% to goal")
+        
+        if current_steps >= user_step_goal:
+            points_awarded = award_step_points(user, current_steps, user_step_goal)
+            if points_awarded > 0:
+                st.balloons()
+                st.success(f"🎉 Daily step goal achieved! +{points_awarded} points")
+        else:
+            remaining = user_step_goal - current_steps
+            st.write(f"Steps needed: {remaining:,}")
+    
+    with col3:
+        if st.button("🔄 Sync Now"):
+            st.rerun()
+    
+    # Step goal management
+    with st.expander("⚙️ Step Goal Settings"):
+        new_goal = st.number_input(
+            "Daily Step Goal", 
+            min_value=1000, 
+            max_value=50000, 
+            value=user_step_goal, 
+            step=500,
+            help="Set your daily step target"
+        )
+        
+        if st.button("Update Goal") and new_goal != user_step_goal:
+            st.session_state.step_goals[user] = new_goal
+            save_bank()
+            st.success(f"Step goal updated to {new_goal:,} steps!")
+            st.rerun()
+        
+        st.info("💡 Tip: Reaching your daily step goal awards 5 points automatically!")
+        
+        # Step history for last 7 days
+        st.subheader("📊 Weekly Step History")
+        if user in st.session_state.step_data:
+            step_history = []
+            for i in range(7):
+                check_date = (date.today() - timedelta(days=i)).isoformat()
+                steps = st.session_state.step_data[user].get(check_date, {}).get("steps", 0)
+                step_history.append((check_date, steps))
+            
+            if any(steps > 0 for _, steps in step_history):
+                for check_date, steps in reversed(step_history):
+                    goal_met = "✅" if steps >= user_step_goal else "⏳"
+                    st.write(f"{goal_met} {check_date}: {steps:,} steps")
+            else:
+                st.write("No step history available yet.")
+        else:
+            st.write("No step history available yet.")
+
 if st.button("➕ Add New User", key="add_user_button"):
     st.session_state["add_user_form_visible"] = True
 
@@ -206,6 +366,8 @@ if st.session_state.get("add_user_form_visible", False):
                         "activity_points": 0,
                         "treats": [{"name": "Ice Cream", "cost": 15, "purchased": False}]
                     }
+                    # Initialize step goal for new user
+                    st.session_state.step_goals[new_user] = 10000
                     # Initialize empty activity log for the new user
                     st.session_state.activity_logs[new_user] = []
                     save_activity_logs()
